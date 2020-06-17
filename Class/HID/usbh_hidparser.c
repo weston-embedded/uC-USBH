@@ -1038,6 +1038,9 @@ static  USBH_ERR  USBH_HID_AddReport (USBH_HID_DEV     *p_hid_dev,
 
                                                                 /* ----------------- INITIALIZE REPORT ---------------- */
     USBH_HID_InitReport(p_parser, p_report_new);
+    if (p_report_new->ReportID != 0u) {
+        p_hid_dev->IsReportID_Present = DEF_TRUE;
+    }
 
                                                                 /* ------------------ VALIDATE REPORT ----------------- */
     err = USBH_HID_ValidateReport(p_report_new);
