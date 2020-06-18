@@ -522,6 +522,7 @@ typedef  struct  usbh_hid_dev {
     CPU_INT08U           NbrAppColl;                            /* Nbr of app coll in main item.                        */
     USBH_HID_APP_COLL    AppColl[USBH_HID_CFG_MAX_NBR_APP_COLL];/* App coll in main item.                               */
     CPU_INT08U           NbrReportID;                           /* Tot nbr of report ID.                                */
+    CPU_BOOLEAN          IsReportID_Present;                    /* Indicate if report ID tag is present.                */
 
                                                                 /* Report ID of all colls.                              */
     USBH_HID_REPORT_ID   ReportID[USBH_HID_CFG_MAX_NBR_REPORT_ID];
