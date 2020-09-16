@@ -747,8 +747,8 @@ USBH_ERR  USBH_HC_Stop (CPU_INT08U  hc_nbr)
     p_hc     = &USBH_Host.HC_Tbl[hc_nbr];
     p_rh_dev =  p_hc->HC_Drv.RH_DevPtr;
 
-    USBH_DevDisconn(p_rh_dev);                                  /* Disconn RH dev.                                      */
     USBH_HCD_Stop(p_hc, &err);
+    USBH_DevDisconn(p_rh_dev);                                  /* Disconn RH dev.                                      */
 
     return (err);
 }
