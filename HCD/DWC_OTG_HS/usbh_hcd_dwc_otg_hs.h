@@ -75,6 +75,9 @@
 *
 *           (2) The following MCUs are supported by USBH_STM32FX_OTG_HS_HCD_DrvAPI:
 *
+*                          STMicroelectronics  STM32F20xx series.
+*                          STMicroelectronics  STM32F21xx series.
+*                          STMicroelectronics  STM32F4xxx series.
 *                          STMicroelectronics  STM32F74xx series.
 *                          STMicroelectronics  STM32F75xx series.
 *
