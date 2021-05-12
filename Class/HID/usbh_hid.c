@@ -1514,7 +1514,6 @@ static  USBH_ERR  USBH_HID_DevLock (USBH_HID_DEV  *p_hid_dev)
         (void)USBH_OS_MutexUnlock(p_hid_dev->HMutex);
         return (USBH_ERR_DEV_NOT_READY);
     }
-    (void)USBH_OS_MutexUnlock(p_hid_dev->HMutex);
 
     return (USBH_ERR_NONE);
 }
