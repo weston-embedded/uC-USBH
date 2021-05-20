@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -20,7 +20,7 @@
 *                                      USB HOST CORE OPERATIONS
 *
 * Filename : usbh_core.c
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 */
 
@@ -747,8 +747,8 @@ USBH_ERR  USBH_HC_Stop (CPU_INT08U  hc_nbr)
     p_hc     = &USBH_Host.HC_Tbl[hc_nbr];
     p_rh_dev =  p_hc->HC_Drv.RH_DevPtr;
 
-    USBH_DevDisconn(p_rh_dev);                                  /* Disconn RH dev.                                      */
     USBH_HCD_Stop(p_hc, &err);
+    USBH_DevDisconn(p_rh_dev);                                  /* Disconn RH dev.                                      */
 
     return (err);
 }

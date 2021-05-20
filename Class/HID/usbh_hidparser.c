@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -20,7 +20,7 @@
 *                                 HUMAN INTERFACE DEVICE CLASS PARSER
 *
 * Filename : usbh_hidparser.c
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 */
 
@@ -1038,6 +1038,9 @@ static  USBH_ERR  USBH_HID_AddReport (USBH_HID_DEV     *p_hid_dev,
 
                                                                 /* ----------------- INITIALIZE REPORT ---------------- */
     USBH_HID_InitReport(p_parser, p_report_new);
+    if (p_report_new->ReportID != 0u) {
+        p_hid_dev->IsReportID_Present = DEF_TRUE;
+    }
 
                                                                 /* ------------------ VALIDATE REPORT ----------------- */
     err = USBH_HID_ValidateReport(p_report_new);

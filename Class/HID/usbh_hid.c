@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -20,7 +20,7 @@
 *                                    HUMAN INTERFACE DEVICE CLASS
 *
 * Filename : usbh_hid.c
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 */
 
@@ -1514,7 +1514,6 @@ static  USBH_ERR  USBH_HID_DevLock (USBH_HID_DEV  *p_hid_dev)
         (void)USBH_OS_MutexUnlock(p_hid_dev->HMutex);
         return (USBH_ERR_DEV_NOT_READY);
     }
-    (void)USBH_OS_MutexUnlock(p_hid_dev->HMutex);
 
     return (USBH_ERR_NONE);
 }

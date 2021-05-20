@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -21,13 +21,16 @@
 *                              SYNOPSYS DESIGNWARE CORE USB 2.0 OTG (HS)
 *
 * File    : usbh_hcd_dwc_otg_hs.c
-* Version : V3.42.00
+* Version : V3.42.01
 *********************************************************************************************************
 * Note(s) : (1) With an appropriate BSP, this host driver will support the OTG_FS host module on  the
 *               STMicroelectronics STM32F7xx MCUs, this applies to the following:
 *
-*                         STM32F74xxx series.
-*                         STM32F75xxx series.
+*                         STM32F20xx series.
+*                         STM32F21xx series.
+*                         STM32F4xxx series.
+*                         STM32F74xx series.
+*                         STM32F75xx series.
 *
 *           (2) Driver DOES NOT support Isochronous Endpoints.
 *********************************************************************************************************
@@ -433,17 +436,21 @@ typedef  struct  usbh_dwcotghs_reg {
 *********************************************************************************************************
 */
 
-typedef  struct  usbh_dwcotghs_ch_info {
-    CPU_INT16U             EP_Addr;                             /* Device addr | EP DIR | EP NBR.                       */
-    CPU_INT08U             EP_TxErrCnt;
+typedef  struct  usbh_dwcotghs_ch_info  USBH_DWCOTGHS_CH_INFO;
+
+struct  usbh_dwcotghs_ch_info {
+    CPU_INT16U              EP_Addr;                            /* Device addr | EP DIR | EP NBR.                       */
+    CPU_INT08U              EP_TxErrCnt;                  
                                                                 /* To ensure the URB EP xfer size is not corrupted ...  */
-    CPU_INT32U             AppBufLen;                           /* ... for multi-transaction transfer                   */
-    USBH_URB              *URB_Ptr;
-    CPU_BOOLEAN            DoSplit;                             /* Configure EP split transactions                      */
-    CPU_INT32U             NextXferLen;
-    USBH_HTMR              Tmr;
-    CPU_INT32U             CSPLITCnt;
-} USBH_DWCOTGHS_CH_INFO;
+    CPU_INT32U              AppBufLen;                          /* ... for multi-transaction transfer                   */
+    USBH_URB               *URB_Ptr;                      
+    CPU_BOOLEAN             DoSplit;                            /* Configure EP split transactions                      */
+    CPU_INT32U              NextXferLen;                  
+    USBH_HTMR               Tmr;                          
+    CPU_INT32U              CSPLITCnt;                          /* Used for keeping track of when CSPLIT will be sent   */  
+    CPU_INT32U              SSPLITCnt;                          /* Used for keeping track of when SSPLIT has been sent  */
+    USBH_DWCOTGHS_CH_INFO  *NextPtr;                            /* Used for Periodic EP linked list to service CSPLITs  */
+};
 
 
 typedef  struct  usbh_drv_data {
@@ -454,8 +461,8 @@ typedef  struct  usbh_drv_data {
     CPU_INT16U             RH_PortStat;                         /* Root Hub Port status.                                */
     CPU_INT16U             RH_PortChng;                         /* Root Hub Port status change.                         */
     CPU_INT32U             SavedGINTMSK;                        /* Saved masked/unmasked int state in case of...        */
-    CPU_INT32U             CSPLITChBmp;
-    CPU_INT32U             SOFCtr;                              /* Start of frame counter.                              */
+    CPU_INT32U             CSPLITChBmp;                         /* Used for CSPLITs of bulk/setup EP that need handling */    
+    CPU_INT32U             SOFCtr;                              /* Start of frame counter.                              */                     
     MEM_POOL               DrvMemPool;                          /* Pool for mem mgmt to keep alignment at the drv level.*/
 } USBH_DRV_DATA;
 
@@ -466,9 +473,12 @@ typedef  struct  usbh_drv_data {
 *********************************************************************************************************
 */
 
-static  volatile  USBH_HQUEUE  DWCOTGHS_URB_Proc_Q;
-static            USBH_URB     DWCOTGHS_Q_UrbEp[DWCOTGHS_URB_PROC_Q_MAX];
-static            CPU_STK      DWCOTGHS_URB_ProcTaskStk[DWCOTGHS_URB_PROC_TASK_STK_SIZE];
+static  volatile  USBH_HQUEUE              DWCOTGHS_URB_Proc_Q;
+static            USBH_URB                 DWCOTGHS_Q_UrbEp[DWCOTGHS_URB_PROC_Q_MAX];
+static            CPU_STK                  DWCOTGHS_URB_ProcTaskStk[DWCOTGHS_URB_PROC_TASK_STK_SIZE];
+
+static  volatile  USBH_DWCOTGHS_CH_INFO   *PER_CSplit_HeadPtr;
+static  volatile  USBH_DWCOTGHS_CH_INFO   *PER_CSplit_TailPtr;
 
 
 /*
@@ -613,6 +623,7 @@ static  void        DWCOTGHS_ChXferStart    (USBH_DWCOTGHS_REG          *p_reg,
                                              USBH_ERR                   *p_err);
 
 static  void        DWCOTGHS_ChEnable       (USBH_DWCOTGHS_HOST_CH_REG  *p_ch_reg,
+                                             USBH_DWCOTGHS_CH_INFO      *p_ch_info,
                                              USBH_URB                   *p_urb);
 
 static  CPU_INT08U  DWCOTGHS_GetChNbr       (USBH_DRV_DATA              *p_drv_data,
@@ -727,6 +738,10 @@ static  void  USBH_DWCOTGHS_HCD_Init (USBH_HC_DRV  *p_hc_drv,
        *p_err = USBH_ERR_ALLOC;
         return;
     }
+                                                                /* Initialize Link list for Periodic CSPLIT endpoints   */
+    PER_CSplit_HeadPtr = (USBH_DWCOTGHS_CH_INFO *)0;
+    PER_CSplit_TailPtr = (USBH_DWCOTGHS_CH_INFO *)0;
+    
                                                                 /* Create Mem pool area to be used for DMA alignment    */
     Mem_PoolCreate(&p_drv_data->DrvMemPool,
                     DEF_NULL,
@@ -949,6 +964,7 @@ static  void  USBH_DWCOTGHS_HCD_StartHandler (USBH_HC_DRV  *p_hc_drv,
         p_drv_data->ChInfoTbl[i].EP_Addr     = DWCOTGHS_DFLT_EP_ADDR;
         p_drv_data->ChInfoTbl[i].DoSplit     = DEF_NO;
         p_drv_data->ChInfoTbl[i].CSPLITCnt   = 0u;
+        p_drv_data->ChInfoTbl[i].SSPLITCnt   = 0u;
     }
 
                                                                 /* --------------- ENABLE VBUS DRIVING ---------------- */
@@ -1274,6 +1290,7 @@ static  void  USBH_DWCOTGHS_HCD_EP_Close (USBH_HC_DRV  *p_hc_drv,
 
         p_drv_data->ChInfoTbl[ch_nbr].DoSplit   = DEF_NO;
         p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = 0u;
+        p_drv_data->ChInfoTbl[ch_nbr].SSPLITCnt = 0u;
         p_drv_data->ChInfoTbl[ch_nbr].EP_Addr   = DWCOTGHS_DFLT_EP_ADDR;
         DEF_BIT_CLR(p_drv_data->ChUsed, DEF_BIT(ch_nbr));
     }
@@ -1613,6 +1630,7 @@ static  void  USBH_DWCOTGHS_HCD_URB_Complete (USBH_HC_DRV  *p_hc_drv,
 
     p_drv_data->ChInfoTbl[ch_nbr].DoSplit   = DEF_NO;
     p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = 0u;
+    p_drv_data->ChInfoTbl[ch_nbr].SSPLITCnt = 0u;
     p_drv_data->ChInfoTbl[ch_nbr].EP_Addr   = DWCOTGHS_DFLT_EP_ADDR;
     DEF_BIT_CLR(p_drv_data->ChUsed, DEF_BIT(ch_nbr));
 }
@@ -2223,13 +2241,15 @@ static  CPU_BOOLEAN  USBH_DWCOTGHS_HCD_RHSC_IntDis (USBH_HC_DRV  *p_hc_drv)
 
 static  void  DWCOTGHS_ISR_Handler (void  *p_drv)
 {
-    USBH_DWCOTGHS_REG  *p_reg;
-    USBH_DRV_DATA      *p_drv_data;
-    USBH_HC_DRV        *p_hc_drv;
-    CPU_INT16U          ch_nbr;
-    CPU_INT32U          ch_int;
-    CPU_INT32U          gintsts_reg;
-    CPU_INT32U          reg_val;
+    USBH_DWCOTGHS_REG      *p_reg;
+    USBH_DRV_DATA          *p_drv_data;
+    USBH_HC_DRV            *p_hc_drv;
+    CPU_INT16U              ch_nbr;
+    CPU_INT32U              ch_int;
+    CPU_INT32U              gintsts_reg;
+    CPU_INT32U              reg_val;
+    USBH_DWCOTGHS_CH_INFO  *p_ch_info;
+    CPU_SR_ALLOC();
 
 
     p_hc_drv     = (USBH_HC_DRV       *)p_drv;
@@ -2242,8 +2262,38 @@ static  void  DWCOTGHS_ISR_Handler (void  *p_drv)
                                                                 /* ------------------ START OF FRAME ------------------ */
     if (DEF_BIT_IS_SET(gintsts_reg, DWCOTGHS_GINTx_SOF) == DEF_YES) {
         p_reg->GINTSTS = DWCOTGHS_GINTx_SOF;                    /* Acknowledge interrupt by a write clear.              */
+        
+                                                                /* ----------- INTERRUPT IN CSPLIT HANDLING ----------- */
+        while (PER_CSplit_HeadPtr != (USBH_DWCOTGHS_CH_INFO *)0) { /* Check if the Linked list is not empty             */
+            p_ch_info = (USBH_DWCOTGHS_CH_INFO *)PER_CSplit_HeadPtr;
+            ch_nbr    = DWCOTGHS_GetChNbr(p_drv_data, p_ch_info->URB_Ptr->EP_Ptr);
 
-        if (p_drv_data->CSPLITChBmp != DEF_BIT_NONE) {
+            if (p_ch_info->CSPLITCnt > 0) {                     /* Check if current channel needs to send its CSPLIT    */
+                DEF_BIT_SET(p_reg->HCH[ch_nbr].HCSPLTx, DWCOTGHS_HCSPLTx_COMPLSPLT);
+                p_ch_info->CSPLITCnt = 0u;
+                
+                CPU_CRITICAL_ENTER();
+                if (PER_CSplit_HeadPtr == PER_CSplit_TailPtr) { /* Update linked list if there is only 1 entry          */
+                    PER_CSplit_HeadPtr = (USBH_DWCOTGHS_CH_INFO *)0;
+                    PER_CSplit_TailPtr = (USBH_DWCOTGHS_CH_INFO *)0;
+                    
+                } else {                                        /* Update head pointer to next entry on the linked list */
+                    PER_CSplit_HeadPtr = PER_CSplit_HeadPtr->NextPtr;
+                }
+                CPU_CRITICAL_EXIT(); 
+                
+                p_reg->HCH[ch_nbr].HCINTx   =  0x000007FFu;     /* Clear old interrupt conditions for this host channel */
+                p_reg->HCH[ch_nbr].HCTSIZx &= ~DWCOTGHS_HCTSIZx_DOPING; /* Bit must be clear to continue NAKs           */
+                p_reg->HCH[ch_nbr].HCCHARx |=  DWCOTGHS_HCCHARx_ODDFRM; /* CSPLIT will be sent during ODDFRAME          */
+                DWCOTGHS_CH_EN(reg_val, p_reg->HCH[ch_nbr]);
+                
+            } else {
+                break;
+            }
+        }
+        
+
+        if (p_drv_data->CSPLITChBmp != DEF_BIT_NONE) {          /* ----------- BULK/CONTROL CSPLIT HANDLING ----------- */
             ch_int = p_drv_data->CSPLITChBmp;                   /* Read Complete Split Channel Bitmap                   */
 
             while (ch_int != DEF_BIT_NONE) {
@@ -2260,11 +2310,11 @@ static  void  DWCOTGHS_ISR_Handler (void  *p_drv)
             }
         }
 
-        p_drv_data->SOFCtr++;
-        if (p_drv_data->CSPLITChBmp == DEF_BIT_NONE) {
+        if (p_drv_data->SOFCtr == 0xFFFFFFFF) {
             p_drv_data->SOFCtr = 0u;
-            DEF_BIT_CLR(p_reg->GINTMSK, DWCOTGHS_GINTx_SOF);
         }
+        
+        p_drv_data->SOFCtr++;
     }
 
     if (DEF_BIT_IS_SET(gintsts_reg, DWCOTGHS_GINTx_DISCINT) == DEF_YES) {
@@ -2514,7 +2564,16 @@ static  void  DWCOTGHS_ISR_HostChOUT (USBH_DWCOTGHS_REG  *p_reg,
                 }
             }
 
-        } else {
+        } else if (hcint_reg & DWCOTGHS_HCINTx_ACK) {
+            if (p_ch_info->DoSplit == DEF_YES) {
+                p_ch_info->EP_TxErrCnt = 0;
+                DWCOTGHS_ChSplitHandler(p_reg,
+                                        p_drv_data,
+                                        ch_nbr,
+                                        ep_type);
+            }
+            
+        } else if (p_reg->HCH[ch_nbr].HCINTx & DWCOTGHS_HCINTx_NYET) {
             if (p_ch_info->DoSplit == DEF_YES) {
                 p_ch_info->EP_TxErrCnt = 0;
                 DWCOTGHS_ChSplitHandler(p_reg,
@@ -2550,6 +2609,7 @@ static  void  DWCOTGHS_ISR_HostChOUT (USBH_DWCOTGHS_REG  *p_reg,
         p_reg->HCH[ch_nbr].HCCHARx |= DWCOTGHS_HCCHARx_CHDIS;
         p_reg->HCH[ch_nbr].HCCHARx |= DWCOTGHS_HCCHARx_CHENA;
 
+        p_urb->Err = USBH_ERR_NONE;
         USBH_URB_Done(p_urb);                                   /* Notify the Core layer about the URB completion       */
 
     } else if (hcint_reg & DWCOTGHS_HCINTx_NAK) {
@@ -2570,7 +2630,7 @@ static  void  DWCOTGHS_ISR_HostChOUT (USBH_DWCOTGHS_REG  *p_reg,
         } else if (p_ch_info->DoSplit == DEF_YES) {
                                                                 /* Save next EP DATA PID value                          */
             p_urb->EP_Ptr->DataPID = DWCOTGHS_GET_DPID(p_reg->HCH[ch_nbr].HCTSIZx);
-            DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_urb);
+            DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_ch_info, p_urb);
         }
     }
 }
@@ -2642,7 +2702,16 @@ static  void  DWCOTGHS_ISR_HostChIN (USBH_DWCOTGHS_REG  *p_reg,
                 }
             }
 
-        } else {
+        } else if (hcint_reg & DWCOTGHS_HCINTx_ACK) {
+            if (p_ch_info->DoSplit == DEF_YES) {
+                p_ch_info->EP_TxErrCnt = 0;
+                DWCOTGHS_ChSplitHandler(p_reg,
+                                        p_drv_data,
+                                        ch_nbr,
+                                        ep_type);
+            }
+            
+        } else if (p_reg->HCH[ch_nbr].HCINTx & DWCOTGHS_HCINTx_NYET) {
             if (p_ch_info->DoSplit == DEF_YES) {
                 p_ch_info->EP_TxErrCnt = 0;
                 DWCOTGHS_ChSplitHandler(p_reg,
@@ -2678,6 +2747,7 @@ static  void  DWCOTGHS_ISR_HostChIN (USBH_DWCOTGHS_REG  *p_reg,
         p_reg->HCH[ch_nbr].HCCHARx |= DWCOTGHS_HCCHARx_CHDIS;
         p_reg->HCH[ch_nbr].HCCHARx |= DWCOTGHS_HCCHARx_CHENA;
 
+        p_urb->Err = USBH_ERR_NONE;
         USBH_URB_Done(p_urb);                                   /* Notify the Core layer about the URB completion       */
 
     } else if (hcint_reg & DWCOTGHS_HCINTx_FRMOR) {
@@ -2708,7 +2778,7 @@ static  void  DWCOTGHS_ISR_HostChIN (USBH_DWCOTGHS_REG  *p_reg,
         } else if (p_ch_info->DoSplit == DEF_YES) {
                                                                 /* Save next EP DATA PID value                          */
             p_urb->EP_Ptr->DataPID = DWCOTGHS_GET_DPID(p_reg->HCH[ch_nbr].HCTSIZx);
-            DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_urb);
+            DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_ch_info, p_urb);
         }
     }
 }
@@ -2739,45 +2809,66 @@ static  void  DWCOTGHS_ChSplitHandler (USBH_DWCOTGHS_REG  *p_reg,
                                        CPU_INT08U          ch_nbr,
                                        CPU_INT08U          ep_type)
 {
-    CPU_INT32U  reg_val;
+    USBH_DWCOTGHS_CH_INFO  *temp_tail;
     CPU_SR_ALLOC();
 
 
     if (p_reg->HCH[ch_nbr].HCINTx & DWCOTGHS_HCINTx_NYET) {
         p_reg->HCH[ch_nbr].HCINTx = DWCOTGHS_HCINTx_NYET;
 
-        if (ep_type == USBH_EP_TYPE_INTR) {                     /* Resend Start SPLIT packet immediately                */
-            DEF_BIT_CLR(p_reg->HCH[ch_nbr].HCSPLTx, DWCOTGHS_HCSPLTx_COMPLSPLT);
-            DEF_BIT_CLR(p_drv_data->CSPLITChBmp, DEF_BIT(ch_nbr));
-            DWCOTGHS_CH_EN(reg_val, p_reg->HCH[ch_nbr]);
+        if (ep_type == USBH_EP_TYPE_INTR) {   
+                                                                /* Save next EP DATA PID value                          */
+            p_drv_data->ChInfoTbl[ch_nbr].URB_Ptr->EP_Ptr->DataPID = DWCOTGHS_GET_DPID(p_reg->HCH[ch_nbr].HCTSIZx);
+            p_drv_data->ChInfoTbl[ch_nbr].URB_Ptr->Err             = USBH_OS_MsgQueuePut(        DWCOTGHS_URB_Proc_Q,
+                                                                                         (void *)p_drv_data->ChInfoTbl[ch_nbr].URB_Ptr);
+            if (p_drv_data->ChInfoTbl[ch_nbr].URB_Ptr->Err != USBH_ERR_NONE) {
+                USBH_URB_Done(p_drv_data->ChInfoTbl[ch_nbr].URB_Ptr); /* Notify the Core layer about the URB completion */
+                
+            } else {
+                p_drv_data->ChInfoTbl[ch_nbr].URB_Ptr->Err = USBH_ERR_EP_NACK;
+            }
 
         } else {                                                /* Resend Complete SPLIT packet for bulk/control EP.    */
             CPU_CRITICAL_ENTER();
-            if (p_drv_data->CSPLITChBmp == 0u) {
-                DEF_BIT_SET(p_reg->GINTMSK, DWCOTGHS_GINTx_SOF);
-            }
             DEF_BIT_SET(p_drv_data->CSPLITChBmp, DEF_BIT(ch_nbr));
-            p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->SOFCtr + 1u;
+            p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->SOFCtr + 0u;
             CPU_CRITICAL_EXIT();
         }
 
     } else if ((p_reg->HCH[ch_nbr].HCINTx                & DWCOTGHS_HCINTx_ACK        ) &&
                (DEF_BIT_IS_CLR(p_reg->HCH[ch_nbr].HCSPLTx, DWCOTGHS_HCSPLTx_COMPLSPLT))) {
-        p_reg->HCH[ch_nbr].HCINTx = DWCOTGHS_HCINTx_ACK;
+        p_reg->HCH[ch_nbr].HCINTMSKx &= ~DWCOTGHS_HCINTx_ACK;   /* Disable ACK interrupt                                */
+        p_reg->HCH[ch_nbr].HCINTx     =  DWCOTGHS_HCINTx_ACK;   /* Clear   ACK interrupt                                */
 
         CPU_CRITICAL_ENTER();                                   /* Send Complete SPLIT if Start SPLIT was successful    */
-        if (p_drv_data->CSPLITChBmp == 0u) {
-            DEF_BIT_SET(p_reg->GINTMSK, DWCOTGHS_GINTx_SOF);
-            if (ep_type == USBH_EP_TYPE_INTR) {
-                p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->SOFCtr + 1u;
+
+        if (ep_type == USBH_EP_TYPE_INTR) {     
+            
+            if (p_drv_data->SOFCtr > p_drv_data->ChInfoTbl[ch_nbr].SSPLITCnt) {
+                 p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->SOFCtr  + 0u;
             } else {
-                p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->SOFCtr + 5u;
+                 p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->ChInfoTbl[ch_nbr].SSPLITCnt + 0u;
             }
 
         } else {
-            p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt += p_drv_data->SOFCtr;
+            
+            if (PER_CSplit_HeadPtr != (USBH_DWCOTGHS_CH_INFO *)0) {  /* Check if Intr. IN CSPLIT linked list is empty   */
+                temp_tail = (USBH_DWCOTGHS_CH_INFO *)PER_CSplit_TailPtr;
+                
+                if (temp_tail->CSPLITCnt == 0u){                /* Sched. BULK/CTRL CSPLIT after last linked list entry */
+                    p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = temp_tail->SSPLITCnt + 4;
+                    
+                } else {
+                    p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = temp_tail->CSPLITCnt + 2;
+                }
+                
+            } else {
+                p_drv_data->ChInfoTbl[ch_nbr].CSPLITCnt = p_drv_data->SOFCtr + 1u;
+            }
+            
+            DEF_BIT_SET(p_drv_data->CSPLITChBmp, DEF_BIT(ch_nbr));
         }
-        DEF_BIT_SET(p_drv_data->CSPLITChBmp, DEF_BIT(ch_nbr));
+        
         CPU_CRITICAL_EXIT();
     }
 }
@@ -2920,6 +3011,7 @@ static  void  DWCOTGHS_ChXferStart (USBH_DWCOTGHS_REG      *p_reg,
     CPU_INT16U      nbr_pkts;
     CPU_INT16U      max_pkt_size;
     CPU_INT08U      is_oddframe;
+    CPU_INT08U      ep_type;
     CPU_BOOLEAN     zlp_flag = DEF_NO;
 
 
@@ -2927,6 +3019,7 @@ static  void  DWCOTGHS_ChXferStart (USBH_DWCOTGHS_REG      *p_reg,
     max_pkt_size           =  USBH_EP_MaxPktSizeGet(p_urb->EP_Ptr);
     nbr_pkts               =  1u;                               /* used for zero length packet.                         */
     p_ch_info->NextXferLen =  p_urb->UserBufLen - p_urb->XferLen;
+    ep_type                =  USBH_EP_TypeGet(p_urb->EP_Ptr);
     *p_err                 =  USBH_ERR_NONE;
 
     if (p_urb->UserBufLen == 0) {
@@ -2973,7 +3066,18 @@ static  void  DWCOTGHS_ChXferStart (USBH_DWCOTGHS_REG      *p_reg,
     DEF_BIT_SET(p_reg->HCH[ch_nbr].HCINTMSKx, DWCOTGHS_HCINTx_CHH);
     p_reg->HCH[ch_nbr].HCDMAx = (CPU_INT32U)p_urb->DMA_BufPtr;
 
-    DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_urb);
+    if (ep_type == USBH_EP_TYPE_INTR) {
+        *p_err = USBH_OS_TmrStart(p_drv_data->ChInfoTbl[ch_nbr].Tmr);
+        if (*p_err != USBH_ERR_NONE) {
+            return;
+        }
+    } else {
+        if (p_ch_info->DoSplit == DEF_YES) {
+            DEF_BIT_SET(p_reg->GINTMSK, DWCOTGHS_GINTx_SOF);
+        }
+        
+        DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_ch_info, p_urb);
+    }
 }
 
 
@@ -2983,9 +3087,11 @@ static  void  DWCOTGHS_ChXferStart (USBH_DWCOTGHS_REG      *p_reg,
 *
 * Description : Function will clear specific bits before enabling the host channel to start transfer.
 *
-* Argument(s) : p_ch_reg     Pointer to DWC OTG HS channel registers structure.
+* Argument(s) : p_ch_reg      Pointer to DWC OTG HS channel registers structure.
 *
-*               p_urb        Pointer to URB structure.
+*               p_ch_info     Pointer to host driver channel information data structure.
+*
+*               p_urb         Pointer to URB structure.
 *
 * Return(s)   : None.
 *
@@ -2994,6 +3100,7 @@ static  void  DWCOTGHS_ChXferStart (USBH_DWCOTGHS_REG      *p_reg,
 */
 
 static  void  DWCOTGHS_ChEnable (USBH_DWCOTGHS_HOST_CH_REG  *p_ch_reg,
+                                 USBH_DWCOTGHS_CH_INFO      *p_ch_info,
                                  USBH_URB                   *p_urb)
 {
     CPU_INT32U  reg_val;
@@ -3002,6 +3109,10 @@ static  void  DWCOTGHS_ChEnable (USBH_DWCOTGHS_HOST_CH_REG  *p_ch_reg,
     p_ch_reg->HCINTx   =  0x000007FFu;                          /* Clear old interrupt conditions for this host channel */
     p_ch_reg->HCSPLTx &= ~DWCOTGHS_HCSPLTx_COMPLSPLT;           /* Bit is only use for split transactions.              */
     p_ch_reg->HCTSIZx &= ~DWCOTGHS_HCTSIZx_DOPING;              /* Bit must be clear to continue NAKs                   */
+    
+    if (p_ch_info->DoSplit == DEF_YES) {
+        p_ch_reg->HCINTMSKx |= DWCOTGHS_HCINTx_ACK;             /* Enable ACK interrupt                                 */
+    }
 
     if (p_urb->Token != USBH_TOKEN_IN) {
         p_ch_reg->HCDMAx = (CPU_INT32U)p_urb->DMA_BufPtr;       /* Rewind buffer.                                       */
@@ -3171,7 +3282,8 @@ static void  DWCOTGHS_URB_ProcTask (void  *p_arg)
                     p_urb->XferLen += (p_drv_data->ChInfoTbl[ch_nbr].NextXferLen - xfer_len);
                 }
             }
-
+            CPU_CRITICAL_EXIT();
+            
             if (p_urb->Err == USBH_ERR_NONE) {
                 DWCOTGHS_ChXferStart( p_reg,
                                      &p_drv_data->ChInfoTbl[ch_nbr],
@@ -3179,7 +3291,6 @@ static void  DWCOTGHS_URB_ProcTask (void  *p_arg)
                                       ch_nbr,
                                      &p_err);
             }
-            CPU_CRITICAL_EXIT();
         }
     }
 }
@@ -3209,6 +3320,7 @@ static  void  DWCOTGHS_TmrCallback (void  *p_tmr,
     USBH_DRV_DATA      *p_drv_data;
     USBH_DWCOTGHS_REG  *p_reg;
     CPU_INT08U          ch_nbr;
+    CPU_SR_ALLOC();
 
 
     p_urb      = (USBH_URB          *)p_arg;
@@ -3218,6 +3330,25 @@ static  void  DWCOTGHS_TmrCallback (void  *p_tmr,
 
     ch_nbr = DWCOTGHS_GetChNbr(p_drv_data, p_urb->EP_Ptr);
     if (ch_nbr != DWCOTGHS_INVALID_CH) {                        /* See Note 1                                           */
-        DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], p_urb);
-    }
+        if (p_drv_data->ChInfoTbl[ch_nbr].DoSplit == DEF_YES) {
+            
+            p_drv_data->ChInfoTbl[ch_nbr].NextPtr   = (USBH_DWCOTGHS_CH_INFO *)0u;
+            p_drv_data->ChInfoTbl[ch_nbr].SSPLITCnt = p_drv_data->SOFCtr;
+
+            CPU_CRITICAL_ENTER();
+            if (PER_CSplit_HeadPtr == (USBH_DWCOTGHS_CH_INFO *)0) { /* Check if linked list is empty                    */
+                PER_CSplit_HeadPtr = &p_drv_data->ChInfoTbl[ch_nbr];
+                PER_CSplit_TailPtr = &p_drv_data->ChInfoTbl[ch_nbr];
+                
+            } else {                                            /* Add entry at the end of the linked list              */
+                PER_CSplit_TailPtr->NextPtr = &p_drv_data->ChInfoTbl[ch_nbr];
+                PER_CSplit_TailPtr          = &p_drv_data->ChInfoTbl[ch_nbr];
+            }            
+            CPU_CRITICAL_EXIT();
+            
+            p_reg->HCH[ch_nbr].HCCHARx |= DWCOTGHS_HCCHARx_ODDFRM; /* Send SSPLIT during and ODDFRAME                   */
+        }
+        
+        DWCOTGHS_ChEnable(&p_reg->HCH[ch_nbr], &p_drv_data->ChInfoTbl[ch_nbr], p_urb);
+    }        
 }

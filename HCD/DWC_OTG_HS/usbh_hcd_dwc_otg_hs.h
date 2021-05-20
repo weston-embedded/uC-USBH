@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -21,7 +21,7 @@
 *                              SYNOPSYS DESIGNWARE CORE USB 2.0 OTG (HS)
 *
 * File    : usbh_hcd_dwc_otg_hs.h
-* Version : V3.42.00
+* Version : V3.42.01
 *********************************************************************************************************
 */
 
@@ -75,6 +75,9 @@
 *
 *           (2) The following MCUs are supported by USBH_STM32FX_OTG_HS_HCD_DrvAPI:
 *
+*                          STMicroelectronics  STM32F20xx series.
+*                          STMicroelectronics  STM32F21xx series.
+*                          STMicroelectronics  STM32F4xxx series.
 *                          STMicroelectronics  STM32F74xx series.
 *                          STMicroelectronics  STM32F75xx series.
 *

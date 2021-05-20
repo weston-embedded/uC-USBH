@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -20,7 +20,7 @@
 *                                    HUMAN INTERFACE DEVICE CLASS
 *
 * Filename : usbh_hid.h
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 */
 
@@ -522,6 +522,7 @@ typedef  struct  usbh_hid_dev {
     CPU_INT08U           NbrAppColl;                            /* Nbr of app coll in main item.                        */
     USBH_HID_APP_COLL    AppColl[USBH_HID_CFG_MAX_NBR_APP_COLL];/* App coll in main item.                               */
     CPU_INT08U           NbrReportID;                           /* Tot nbr of report ID.                                */
+    CPU_BOOLEAN          IsReportID_Present;                    /* Indicate if report ID tag is present.                */
 
                                                                 /* Report ID of all colls.                              */
     USBH_HID_REPORT_ID   ReportID[USBH_HID_CFG_MAX_NBR_REPORT_ID];
