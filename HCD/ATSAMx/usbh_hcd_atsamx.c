@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -20,7 +20,7 @@
 *                                    ATSAMX HOST CONTROLLER DRIVER
 *
 * Filename : usbh_hcd_atsamx.c
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 * Note(s)  : (1) Due to hardware limitations, the ATSAM D5x/E5x host controller does not support a
 *                combination of Full-Speed HUB + Low-Speed device

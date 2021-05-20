@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -21,7 +21,7 @@
 *                              SYNOPSYS DESIGNWARE CORE USB 2.0 OTG (HS)
 *
 * File    : usbh_hcd_dwc_otg_hs.c
-* Version : V3.42.00
+* Version : V3.42.01
 *********************************************************************************************************
 * Note(s) : (1) With an appropriate BSP, this host driver will support the OTG_FS host module on  the
 *               STMicroelectronics STM32F7xx MCUs, this applies to the following:
