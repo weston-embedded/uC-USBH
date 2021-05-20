@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -22,7 +22,7 @@
 *                                       RENESAS USB HIGH-SPEED
 *
 * Filename : usbh_hcd_renesas_usbhs.c
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 */
 

@@ -3,7 +3,7 @@
 *                                             uC/USB-Host
 *                                     The Embedded USB Host Stack
 *
-*                    Copyright 2004-2020 Silicon Laboratories Inc. www.silabs.com
+*                    Copyright 2004-2021 Silicon Laboratories Inc. www.silabs.com
 *
 *                                 SPDX-License-Identifier: APACHE-2.0
 *
@@ -20,7 +20,7 @@
 *                                      USB HOST CORE OPERATIONS
 *
 * Filename : usbh_core.h
-* Version  : V3.42.00
+* Version  : V3.42.01
 *********************************************************************************************************
 */
 
@@ -67,7 +67,7 @@
 *********************************************************************************************************
 */
 
-#define  USBH_VERSION                                  34200u
+#define  USBH_VERSION                                  34201u
 
 #define  USBH_LEN_DESC_HDR                              0x02u
 #define  USBH_LEN_DESC_DEV                              0x12u
