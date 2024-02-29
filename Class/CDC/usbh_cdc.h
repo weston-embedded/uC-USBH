@@ -63,15 +63,7 @@
 *********************************************************************************************************
 */
 
-#define  USBH_CDC_LEN_EVENT_BUF                           10u
-
-#define  USBH_CDC_NOTIFICATION_NET_CONN                 0x00u
-#define  USBH_CDC_NOTIFICATION_RESP_AVAIL               0x01u
-#define  USBH_CDC_NOTIFICATION_AUX_JACK_HOOK_STATE      0x08u
-#define  USBH_CDC_NOTIFICATION_RING_DETECT              0x09u
-#define  USBH_CDC_NOTIFICATION_SERIAL_STATE             0x20u
-#define  USBH_CDC_NOTIFICATION_CALL_STATE_CHNG          0x28u
-#define  USBH_CDC_NOTIFICATION_LINE_STATE_CHNG          0x23u
+#define  USBH_CDC_LEN_EVENT_BUF                           16u
 
 #define  USBH_CDC_LEN_FNCTLHEADER_DESC                  0x05u   /* Len of functional hdr desc.                          */
 #define  USBH_CDC_LEN_CALL_MANAGEMENT_FNCTL_DESC        0x05u   /* Len of call mgmt functional desc.                    */
@@ -86,8 +78,8 @@
 *********************************************************************************************************
 *                          SUBCLASS CODES FOR COMMUNICATION INTERFACE CLASS
 *
-* Note(s) : (1) See "USB Class Definitiopns for Communication Devices Specification", version 1.1,
-*               Section 4.3, Table 16.
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2,
+*               Section 4.3, Table 4.
 *********************************************************************************************************
 */
 
@@ -98,19 +90,32 @@
 #define  USBH_CDC_CONTROL_SUBCLASS_CODE_CAPICM          0x05u
 #define  USBH_CDC_CONTROL_SUBCLASS_CODE_ENCM            0x06u
 #define  USBH_CDC_CONTROL_SUBCLASS_CODE_ATMNCM          0x07u
+#define  USBH_CDC_CONTROL_SUBCLASS_CODE_WHCM            0x08u  /* Wireless Handset Control Model.                      */
+#define  USBH_CDC_CONTROL_SUBCLASS_CODE_DEV_MGMT        0x09u  /* Device Management.                                   */
+#define  USBH_CDC_CONTROL_SUBCLASS_CODE_MDLM            0x0Au  /* Mobile Direct Line Model.                            */
+#define  USBH_CDC_CONTROL_SUBCLASS_CODE_OBEX            0x0Bu  /* OBEX.                                                */
+#define  USBH_CDC_CONTROL_SUBCLASS_CODE_EEM             0x0Cu  /* Ethernet Emulation Model.                            */
+#define  USBH_CDC_CONTROL_SUBCLASS_CODE_NCM             0x0Du  /* Network Control Model.                               */
 
 
 /*
 *********************************************************************************************************
 *                          PROTOCOL CODES FOR COMMUNICATION INTERFACE CLASS
 *
-* Note(s) : (1) See "USB Class Definitiopns for Communication Devices Specification", version 1.1,
-*               Section 4.4, Table 17.
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2,
+*               Section 4.4, Table 5.
 *********************************************************************************************************
 */
 
 #define  USBH_CDC_CONTROL_PROTOCOL_CODE_USB             0x00u
 #define  USBH_CDC_CONTROL_PROTOCOL_CODE_V_25_AT         0x01u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_PCCA_101_AT     0x02u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_PCCA_101_O_AT   0x03u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_GSM_7_07_AT     0x04u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_3GPP_27_007_AT  0x05u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_TIA_CDMA_AT     0x06u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_EEM             0x07u
+#define  USBH_CDC_CONTROL_PROTOCOL_CODE_EXTERNAL        0xFEu
 #define  USBH_CDC_CONTROL_PROTOCOL_CODE_VENDOR          0xFFu
 
 
@@ -118,7 +123,7 @@
 *********************************************************************************************************
 *                               SUBCLASS CODES FOR DATA INTERFACE CLASS
 *
-* Note(s) : (1) See "USB Class Definitiopns for Communication Devices Specification", version 1.1,
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2,
 *               Section 4.6.
 *********************************************************************************************************
 */
@@ -130,14 +135,16 @@
 *********************************************************************************************************
 *                               PROTOCOL CODES FOR DATA INTERFACE CLASS
 *
-* Note(s) : (1) See "USB Class Definitiopns for Communication Devices Specification", version 1.1,
-*               Section 4.7, Table 19.
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2,
+*               Section 4.7, Table 7.
 *********************************************************************************************************
 */
 
 #define  USBH_CDC_DATA_PROTOCOL_CODE_USB                0x00u
+#define  USBH_CDC_DATA_PROTOCOL_CODE_NTB                0x01u
 #define  USBH_CDC_DATA_PROTOCOL_CODE_ISDN_BRI           0x30u
 #define  USBH_CDC_DATA_PROTOCOL_CODE_ISO_IEC            0x31u
+#define  USBH_CDC_DATA_PROTOCOL_CODE_TRANSPARENT        0x32u
 #define  USBH_CDC_DATA_PROTOCOL_CODE_Q_921M             0x50u
 #define  USBH_CDC_DATA_PROTOCOL_CODE_Q_921_NUM          0x51u
 #define  USBH_CDC_DATA_PROTOCOL_CODE_Q921TM             0x52u
@@ -153,10 +160,10 @@
 *********************************************************************************************************
 *                                       FUNCTIONAL DESCRIPTORS
 *
-* Note(s) : (1) See "USB Class Definitiopns for Communication Devices Specification", version 1.1,
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2,
 *               Section 5.2.3.
-*           (2) The functinal descriptors descriptor type is given in "Table 24".
-*           (3) The functinal descriptors descriptor subtype is given in "Table 25".
+*           (2) The functional descriptors descriptor type is given in "Table 13".
+*           (3) The functional descriptors descriptor subtype is given in "Table 14".
 *********************************************************************************************************
 */
 
@@ -180,14 +187,24 @@
 #define  USBH_CDC_FNCTL_DESC_SUB_CAPI_CMFD              0x0Eu
 #define  USBH_CDC_FNCTL_DESC_SUB_ENFD                   0x0Fu
 #define  USBH_CDC_FNCTL_DESC_SUB_ATM_NFD                0x10u
+#define  USBH_CDC_FNCTL_DESC_SUB_WHCMFD                 0x11u  /* Wireless Handset Control Model.                      */
+#define  USBH_CDC_FNCTL_DESC_SUB_MDLMFD                 0x12u  /* Mobile Direct Line Model.                            */
+#define  USBH_CDC_FNCTL_DESC_SUB_MDLMDFD                0x13u  /* Mobile Direct Line Model Details.                    */
+#define  USBH_CDC_FNCTL_DESC_SUB_DEV_MGMTFD             0x14u  /* Device Management.                                   */
+#define  USBH_CDC_FNCTL_DESC_SUB_OBEXFD                 0x15u  /* OBEX.                                                */
+#define  USBH_CDC_FNCTL_DESC_SUB_CMDSETFD               0x16u  /* Command Set.                                         */
+#define  USBH_CDC_FNCTL_DESC_SUB_CMDSETDFD              0x17u  /* Command Set Details.                                 */
+#define  USBH_CDC_FNCTL_DESC_SUB_TCMFD                  0x18u  /* Telephone Control Model.                             */
+#define  USBH_CDC_FNCTL_DESC_SUB_OBEXSIDFD              0x19u  /* OBEX Service Identifier.                             */
+#define  USBH_CDC_FNCTL_DESC_SUB_NCMFD                  0x1Au  /* Network Control Model.                               */
 
 
 /*
 *********************************************************************************************************
 *                                       CLASS-SPECIFIC REQUESTS
 *
-* Note(s) : (1) See "USB Class Definitiopns for Communication Devices Specification", version 1.1 Section 6.2,
-*               Table 46.
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2 Section 6.2,
+*               Table 19.
 *
 *           (2) The 'bRequest' field of a class-specific setup request may contain one of these values.
 *
@@ -244,17 +261,58 @@
 
 #define  USBH_CDC_SEND_ENCAPSULATED_COMMAND             0x00u   /* Std brequest val for SEND_ENCAPSULATED_COMMAND.      */
 #define  USBH_CDC_GET_ENCAPSULATED_RESPONSE             0x01u   /* Std brequest val for GET_ENCAPSULATED_RESPONSE.      */
+#define  USBH_CDC_SET_COMM_FEATURE                      0x02u   /* Std brequest val for SET_COMM_FEATURE.               */
+#define  USBH_CDC_GET_COMM_FEATURE                      0x03u   /* Std brequest val for GET_COMM_FEATURE.               */
+#define  USBH_CDC_CLEAR_COMM_FEATURE                    0x04u   /* Std brequest val for CLEAR_COMM_FEATURE.             */
+#define  USBH_CDC_SET_AUX_LINE_STATE                    0x10u   /* Std brequest val for SET_AUX_LINE_STATE.             */
+#define  USBH_CDC_SET_HOOK_STATE                        0x11u   /* Std brequest val for SET_HOOK_STATE.                 */
+#define  USBH_CDC_PULSE_SETUP                           0x12u   /* Std brequest val for PULSE_SETUP.                    */
+#define  USBH_CDC_SEND_PULSE                            0x13u   /* Std brequest val for SEND_PULSE.                     */
+#define  USBH_CDC_SET_PULSE_TIME                        0x14u   /* Std brequest val for SET_PULSE_TIME.                 */
+#define  USBH_CDC_RING_AUX_JACK                         0x15u   /* Std brequest val for RING_AUX_JACK.                  */
 #define  USBH_CDC_SET_LINECODING                        0x20u   /* Std brequest val for SET_LINE_CODING.                */
 #define  USBH_CDC_GET_LINECODING                        0x21u   /* Std brequest val for GET_LINE_CODING.                */
 #define  USBH_CDC_SET_CONTROL_LINESTATE                 0x22u   /* Std brequest val for SET_CONTROL_LINE_STATE.         */
 #define  USBH_CDC_SEND_BREAK                            0x23u   /* Std brequest val for SEND_BREAK.                     */
+#define  USBH_CDC_SET_RINGER_PARMS                      0x30u   /* Std brequest val for SET_RINGER_PARMS.               */
+#define  USBH_CDC_GET_RINGER_PARMS                      0x31u   /* Std brequest val for GET_RINGER_PARMS.               */
+#define  USBH_CDC_SET_OPERATION_PARMS                   0x32u   /* Std brequest val for SET_OPERATION_PARMS.            */
+#define  USBH_CDC_GET_OPERATION_PARMS                   0x33u   /* Std brequest val for GET_OPERATION_PARMS.            */
+#define  USBH_CDC_SET_LINE_PARMS                        0x34u   /* Std brequest val for SET_LINE_PARMS.                 */
+#define  USBH_CDC_GET_LINE_PARMS                        0x35u   /* Std brequest val for GET_LINE_PARMS.                 */
+#define  USBH_CDC_DIAL_DIGITS                           0x36u   /* Std brequest val for DIAL_DIGITS.                    */
+#define  USBH_CDC_SET_UNIT_PARAMETER                    0x37u   /* Std brequest val for SET_UNIT_PARAMETER.             */
+#define  USBH_CDC_GET_UNIT_PARAMETER                    0x38u   /* Std brequest val for GET_UNIT_PARAMETER.             */
+#define  USBH_CDC_CLEAR_UNIT_PARAMETER                  0x39u   /* Std brequest val for CLEAR_UNIT_PARAMETER.           */
+#define  USBH_CDC_GET_PROFILE                           0x3Au   /* Std brequest val for GET_PROFILE.                    */
+#define  USBH_CDC_SET_ETHERNET_MULTICAST_FILTERS        0x40u   /* Std brequest val for SET_ETHERNET_MULTICAST_FILTERS. */
+#define  USBH_CDC_SET_ETHERNET_POWER_MANAGEMENT_PATTERN 0x41u   /* Std brequest val for SET_ETHERNET_POWER_MANAGEMENT.  */
+#define  USBH_CDC_GET_ETHERNET_POWER_MANAGEMENT_PATTERN 0x42u   /* Std brequest val for GET_ETHERNET_POWER_MANAGEMENT.  */
+#define  USBH_CDC_SET_ETHERNET_PACKET_FILTER            0x43u   /* Std brequest val for SET_ETHERNET_PACKET_FILTER.     */
+#define  USBH_CDC_GET_ETHERNET_STATISTIC                0x44u   /* Std brequest val for GET_ETHERNET_STATISTIC.         */
+#define  USBH_CDC_SET_ATM_DATA_FORMAT                   0x50u   /* Std brequest val for SET_ATM_DATA_FORMAT.            */
+#define  USBH_CDC_GET_ATM_DEVICE_STATISTICS             0x51u   /* Std brequest val for GET_ATM_DEVICE_STATISTICS.      */
+#define  USBH_CDC_SET_ATM_DEFAULT_VC                    0x52u   /* Std brequest val for SET_ATM_DEFAULT_VC.             */
+#define  USBH_CDC_GET_ATM_VC_STATISTICS                 0x53u   /* Std brequest val for GET_ATM_VC_STATISTICS.          */
+#define  USBH_CDC_GET_NTB_PARAMETERS                    0x80u   /* Std brequest val for GET_NTB_PARAMETERS.             */
+#define  USBH_CDC_GET_NET_ADDRESS                       0x81u   /* Std brequest val for GET_NET_ADDRESS.                */
+#define  USBH_CDC_SET_NET_ADDRESS                       0x82u   /* Std brequest val for SET_NET_ADDRESS.                */
+#define  USBH_CDC_GET_NTB_FORMAT                        0x83u   /* Std brequest val for GET_NTB_FORMAT.                 */
+#define  USBH_CDC_SET_NTB_FORMAT                        0x84u   /* Std brequest val for SET_NTB_FORMAT.                 */
+#define  USBH_CDC_GET_NTB_INPUT_SIZE                    0x85u   /* Std brequest val for GET_NTB_INPUT_SIZE.             */
+#define  USBH_CDC_SET_NTB_INPUT_SIZE                    0x86u   /* Std brequest val for SET_NTB_INPUT_SIZE.             */
+#define  USBH_CDC_GET_MAX_DATAGRAM_SIZE                 0x87u   /* Std brequest val for GET_MAX_DATAGRAM_SIZE.          */
+#define  USBH_CDC_SET_MAX_DATAGRAM_SIZE                 0x88u   /* Std brequest val for SET_MAX_DATAGRAM_SIZE.          */
+#define  USBH_CDC_GET_CRC_MODE                          0x89u   /* Std brequest val for GET_CRC_MODE.                   */
+#define  USBH_CDC_SET_CRC_MODE                          0x8Au   /* Std brequest val for SET_CRC_MODE.                   */
 
 
 /*
 *********************************************************************************************************
-*                                         NOTIFICATION EVENT
+*                                         NOTIFICATION EVENTS
 *
-* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.1 Section 6.3.
+* Note(s) : (1) See "USB Class Definitions for Communication Devices Specification", version 1.2 Section 6.3.
+ *              Table 20.
 *
 *           (2) The 'bRequest' field of a notification event setup request may contain this value.
 *
@@ -281,7 +339,14 @@
 *********************************************************************************************************
 */
 
-#define  USBH_CDC_SER_STATE                             0x20u   /* Std brequest val for SERIAL_STATE.                   */
+#define  USBH_CDC_NOTIFICATION_NET_CONN                 0x00u
+#define  USBH_CDC_NOTIFICATION_RESP_AVAIL               0x01u
+#define  USBH_CDC_NOTIFICATION_AUX_JACK_HOOK_STATE      0x08u
+#define  USBH_CDC_NOTIFICATION_RING_DETECT              0x09u
+#define  USBH_CDC_NOTIFICATION_SERIAL_STATE             0x20u
+#define  USBH_CDC_NOTIFICATION_CALL_STATE_CHNG          0x28u
+#define  USBH_CDC_NOTIFICATION_LINE_STATE_CHNG          0x29u
+#define  USBH_CDC_NOTIFICATION_CONN_SPEED_CHNG          0x2Au
 
 
 /*
@@ -300,7 +365,7 @@ typedef  struct  usbh_cdc_dev {
     CPU_INT08U        State;
     CPU_INT08U        RefCnt;
     USBH_HMUTEX       HMutex;
-    CPU_INT08U        EventNotifyBuf[USBH_CDC_LEN_EVENT_BUF];   /* Buf used to recv ser state of dev.                   */
+    CPU_INT08U        EventNotifyBuf[USBH_CDC_LEN_EVENT_BUF];   /* Buf used to recv notifications of dev.               */
 
     USBH_EP           CIC_IntrIn;
     USBH_EP           DIC_BulkIn;
