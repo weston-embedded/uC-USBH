@@ -926,13 +926,20 @@ static  void  USBH_CDC_GlobalInit (USBH_ERR  *p_err)
 static  void  *USBH_CDC_ProbeDev (USBH_DEV  *p_dev,
                                   USBH_ERR  *p_err)
 {
+    CPU_INT08U            cfg_ix;
     CPU_INT08U            if_ix;
+    CPU_INT08U            alt_if_idx;
+    CPU_INT08U            cfg_nbr    = 0u;
     CPU_INT08U            cic_if_nbr = 0u;
     CPU_INT08U            dic_if_nbr = 0u;
+    CPU_INT08U            nbr_cfgs;
     CPU_INT08U            nbr_ifs;
+    CPU_INT08U            nbr_alt_ifs;
     USBH_CFG             *p_cfg;
     USBH_DEV_DESC         dev_desc;
+    USBH_CFG_DESC         cfg_desc;
     USBH_IF_DESC          if_desc;
+    USBH_IF_DESC          alt_if_desc;
     USBH_IF              *p_if;
     USBH_IF              *p_cic_if;
     USBH_IF              *p_dic_if;
@@ -945,58 +952,75 @@ static  void  *USBH_CDC_ProbeDev (USBH_DEV  *p_dev,
     p_dic_if = (USBH_IF *)0;
 
     USBH_DevDescGet(p_dev, &dev_desc);
-    if (dev_desc.bDeviceClass != USBH_CLASS_CODE_CDC_CTRL) {
+    if (dev_desc.bDeviceClass != USBH_CLASS_CODE_CDC_CTRL &&
+        dev_desc.bDeviceClass != USBH_CLASS_CODE_USE_IF_DESC) { /* CDC can be defined at the interface.                 */
        *p_err = USBH_ERR_CLASS_PROBE_FAIL;
         return ((void *)0);
     }
 
-    p_cfg = USBH_CfgGet(p_dev, 0u);
-    if (p_cfg == (USBH_CFG *) 0) {
-       *p_err = USBH_ERR_CLASS_PROBE_FAIL;
-        return ((void *)0);
-    }
+    nbr_cfgs = USBH_DevCfgNbrGet(p_dev);
+    for (cfg_ix = 0u; cfg_ix < nbr_cfgs; cfg_ix++) {
 
-    nbr_ifs = USBH_CfgIF_NbrGet(p_cfg);
-    for (if_ix = 0u; if_ix < nbr_ifs; if_ix++) {
-
-         p_if = USBH_IF_Get(p_cfg, if_ix);
-         USBH_IF_DescGet(p_if,                                  /* Get IF desc from IF.                                 */
-                         0u,
-                        &if_desc);
-
-         switch (if_desc.bInterfaceClass) {
-             case USBH_CLASS_CODE_CDC_CTRL:
-                  p_cic_if   = p_if;
-                  cic_if_nbr = if_desc.bInterfaceNumber;
-
-                 *p_err = USBH_CDC_UnionDescParse(&union_desc, p_if);
-                  if (*p_err != USBH_ERR_NONE) {
-                      return ((void *)0);
-                  }
-
-                  if (union_desc.bMasterInterface != cic_if_nbr) {
-                     *p_err = USBH_ERR_DESC_INVALID;
-                      return ((void *)0);
-                  }
-
-                  dic_if_nbr = union_desc.bSlaveInterface0;
-                  break;
-
-             case USBH_CLASS_CODE_CDC_DATA:
-                  if (p_cic_if != (USBH_IF *)0) {
-                      if (if_desc.bInterfaceNumber == dic_if_nbr) {
-                          p_dic_if = p_if;
-                      }
-                  }
-                  break;
-
-             default:
-                  break;
+        p_cfg = USBH_CfgGet(p_dev, cfg_ix);
+        if (p_cfg == (USBH_CFG *) 0) {
+           *p_err = USBH_ERR_CLASS_PROBE_FAIL;
+            return ((void *)0);
         }
+        USBH_CfgDescGet(p_cfg, &cfg_desc);
 
-        if ((p_cic_if != (USBH_IF *)0) &&
-            (p_dic_if != (USBH_IF *)0)) {
-            break;
+        nbr_ifs = USBH_CfgIF_NbrGet(p_cfg);
+        for (if_ix = 0u; if_ix < nbr_ifs; if_ix++) {
+
+             p_if = USBH_IF_Get(p_cfg, if_ix);
+             USBH_IF_DescGet(p_if,                                  /* Get IF desc from IF.                             */
+                             0u,
+                            &if_desc);
+
+             switch (if_desc.bInterfaceClass) {
+                 case USBH_CLASS_CODE_CDC_CTRL:
+                      p_cic_if   = p_if;
+                      cic_if_nbr = if_desc.bInterfaceNumber;
+                      cfg_nbr    = cfg_desc.bConfigurationValue;   /* Keep track of cfg for data transfer.              */
+
+                     *p_err = USBH_CDC_UnionDescParse(&union_desc, p_if);
+                      if (*p_err != USBH_ERR_NONE) {
+                          return ((void *)0);
+                      }
+
+                      if (union_desc.bMasterInterface != cic_if_nbr) {
+                         *p_err = USBH_ERR_DESC_INVALID;
+                          return ((void *)0);
+                      }
+
+                      dic_if_nbr = union_desc.bSlaveInterface0;
+                      break;
+
+                 case USBH_CLASS_CODE_CDC_DATA:
+                      if (p_cic_if != (USBH_IF *)0) {
+                          if (if_desc.bInterfaceNumber == dic_if_nbr) {  /* Find IF and alt IF for data.                */
+
+                              nbr_alt_ifs = USBH_IF_AltNbrGet(p_if);
+                              for (alt_if_idx = 0u; alt_if_idx < nbr_alt_ifs; alt_if_idx++) {
+
+                                  USBH_IF_DescGet(p_if, alt_if_idx, &alt_if_desc);
+                                  if (alt_if_desc.bNbrEndpoints == 2) {  /* Match the first alt IF with 2 EPs (IN/OUT). */
+                                      p_dic_if            = p_if;
+                                      p_dic_if->AltIxSel  = alt_if_idx;
+                                      break;
+                                  }
+                              }
+                          }
+                      }
+                      break;
+
+                 default:
+                      break;
+            }
+
+            if ((p_cic_if != (USBH_IF *)0) &&
+                (p_dic_if != (USBH_IF *)0)) {
+                break;
+            }
         }
     }
 
@@ -1024,6 +1048,7 @@ static  void  *USBH_CDC_ProbeDev (USBH_DEV  *p_dev,
     }
 
     p_cdc_dev->DevPtr     = p_dev;
+    p_cdc_dev->Cfg_Nbr    = cfg_nbr;
     p_cdc_dev->CIC_IF_Nbr = cic_if_nbr;
     p_cdc_dev->CIC_IF_Ptr = p_cic_if;
     p_cdc_dev->DIC_IF_Nbr = dic_if_nbr;
