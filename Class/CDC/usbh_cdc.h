@@ -306,6 +306,7 @@ typedef  struct  usbh_cdc_dev {
     USBH_EP           DIC_BulkIn;
     USBH_EP           DIC_BulkOut;
 
+    CPU_INT08U        Cfg_Nbr;
     USBH_IF          *CIC_IF_Ptr;
     CPU_INT08U        CIC_IF_Nbr;
     USBH_IF          *DIC_IF_Ptr;
