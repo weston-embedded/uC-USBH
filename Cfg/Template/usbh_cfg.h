@@ -130,6 +130,7 @@
 *                   MSC                      1 interface
 *                   HID                      1 interface
 *                   CDC ACM                  2 interfaces
+*                   CDC ECM                  2 interfaces
 *
 *              (c)  Each interface descriptor has zero or more endpoint descriptors describing a unique
 *                   set of endpoints within the interface. USBH_CFG_MAX_NBR_EPS represents the maximum
@@ -247,6 +248,11 @@
                                                                 /*  The maximum number of CDC ACM devices that can ...  */
                                                                 /*  ... be connected at the same time.                  */
 #define  USBH_CDC_ACM_CFG_MAX_DEV                          1u
+
+                                                                /*  Maximum number of CDC ECM device                    */
+                                                                /*  The maximum number of CDC ECM devices that can ...  */
+                                                                /*  ... be connected at the same time.                  */
+#define  USBH_CDC_ECM_CFG_MAX_DEV                          1u
 
 
 /*

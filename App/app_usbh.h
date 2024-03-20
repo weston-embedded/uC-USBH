@@ -71,8 +71,11 @@
 #define  APP_CFG_USBH_HID_EN                    DEF_DISABLED
 #endif
 
-#ifndef  APP_CFG_USBH_CDC_EN
-#define  APP_CFG_USBH_CDC_EN                    DEF_DISABLED
+#ifndef  APP_CFG_USBH_CDC_ACM_EN
+#define  APP_CFG_USBH_CDC_ACM_EN                DEF_DISABLED
+
+#ifndef  APP_CFG_USBH_CDC_ECM_EN
+#define  APP_CFG_USBH_CDC_ECM_EN                DEF_DISABLED
 #endif
 
 #ifndef  APP_CFG_USBH_FTDI_EN
@@ -92,8 +95,12 @@
 #include    "HID/app_usbh_hid.h"
 #endif
 
-#if (APP_CFG_USBH_CDC_EN == DEF_ENABLED)
+#if (APP_CFG_USBH_CDC_ACM_EN == DEF_ENABLED)
 #include    "CDC/app_usbh_cdc_acm.h"
+#endif
+
+#if (APP_CFG_USBH_CDC_ECM_EN == DEF_ENABLED)
+#include    "CDC/app_usbh_cdc_ecm.h"
 #endif
 
 #if (APP_CFG_USBH_MSC_EN == DEF_ENABLED)
