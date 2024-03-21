@@ -146,12 +146,22 @@ CPU_BOOLEAN  App_USBH_Init (void)
     }
 #endif
 
-#if (APP_CFG_USBH_CDC_EN == DEF_ENABLED)
+#if (APP_CFG_USBH_CDC_ACM_EN == DEF_ENABLED)
     APP_TRACE_INFO(("... Initiliazing HOST Communication Device Class ...\r\n"));
     err = App_USBH_CDC_ACM_Init();
 
     if (err != USBH_ERR_NONE) {
-        APP_TRACE_DBG(("...could not initialize CDC w/err = %d\r\n\r\n", err));
+        APP_TRACE_DBG(("...could not initialize CDC ACM w/err = %d\r\n\r\n", err));
+        return (DEF_FAIL);
+    }
+#endif
+
+#if (APP_CFG_USBH_CDC_ECM_EN == DEF_ENABLED)
+    APP_TRACE_INFO(("... Initiliazing HOST Communication Device Class ...\r\n"));
+    err = App_USBH_CDC_ECM_Init();
+
+    if (err != USBH_ERR_NONE) {
+        APP_TRACE_DBG(("...could not initialize CDC ECM w/err = %d\r\n\r\n", err));
         return (DEF_FAIL);
     }
 #endif
