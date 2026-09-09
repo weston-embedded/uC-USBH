@@ -138,6 +138,17 @@ static  const  CPU_INT08U  USBH_HUB_RH_LangID[] = {
 *********************************************************************************************************
 */
 
+typedef  struct  usbh_hub_desc_wire {
+    CPU_INT08U  bDescLength;
+    CPU_INT08U  bDescriptorType;
+    CPU_INT08U  bNbrPorts;
+    CPU_INT08U  wHubCharacteristics[2u];
+    CPU_INT08U  bPwrOn2PwrGood;
+    CPU_INT08U  bHubContrCurrent;
+    CPU_INT08U  DeviceRemovable;
+    CPU_INT08U  PortPwrCtrlMask[USBH_CFG_MAX_HUB_PORTS][4u];
+} USBH_HUB_DESC_BUF;
+
 
 /*
 *********************************************************************************************************
@@ -2274,22 +2285,22 @@ void  USBH_HUB_ClassNotify (void        *p_class_dev,
 void  USBH_HUB_ParseHubDesc (USBH_HUB_DESC  *p_hub_desc,
                              void           *p_buf_src)
 {
-    USBH_HUB_DESC  *p_buf_src_desc;
-    CPU_INT08U      i;
+    USBH_HUB_DESC_BUF  *p_buf_src_desc;
+    CPU_INT08U          i;
 
 
-    p_buf_src_desc = (USBH_HUB_DESC *)p_buf_src;
+    p_buf_src_desc = (USBH_HUB_DESC_BUF *)p_buf_src;
 
     p_hub_desc->bDescLength         = p_buf_src_desc->bDescLength;
     p_hub_desc->bDescriptorType     = p_buf_src_desc->bDescriptorType;
     p_hub_desc->bNbrPorts           = p_buf_src_desc->bNbrPorts;
-    p_hub_desc->wHubCharacteristics = MEM_VAL_GET_INT16U_LITTLE(&p_buf_src_desc->wHubCharacteristics);
+    p_hub_desc->wHubCharacteristics = MEM_VAL_GET_INT16U_LITTLE(&p_buf_src_desc->wHubCharacteristics[0u]);
     p_hub_desc->bPwrOn2PwrGood      = p_buf_src_desc->bPwrOn2PwrGood;
     p_hub_desc->bHubContrCurrent    = p_buf_src_desc->bHubContrCurrent;
     p_hub_desc->DeviceRemovable     = p_buf_src_desc->DeviceRemovable;
 
     for (i = 0u; i < USBH_CFG_MAX_HUB_PORTS; i++) {
-        p_hub_desc->PortPwrCtrlMask[i] = MEM_VAL_GET_INT32U_LITTLE(&p_buf_src_desc->PortPwrCtrlMask[i]);
+        p_hub_desc->PortPwrCtrlMask[i] = MEM_VAL_GET_INT32U_LITTLE(&p_buf_src_desc->PortPwrCtrlMask[i][0u]);
     }
 }
 
