@@ -983,6 +983,13 @@ static  void  USBH_HUB_ISR (USBH_EP     *p_ep,
 *
 *               (2) Open Host Controller Interface specification Release 1.0a states that Port Reset Status
 *                   Change bit is set at the end of 10 ms port reset signal. See section 7.4.4, PRSC field.
+*
+*               (3) A hub that detects a Port_Error disables the port and sets C_PORT_ENABLE while
+*                   PORT_CONNECTION stays set (See sections 11.8.1 and 11.24.2.7.2.2, USB 2.0 spec). A
+*                   disabled port is re-enabled only by a port reset (See section 11.5.1.4, USB 2.0
+*                   spec), so the attached device is handled as a removal followed by a connection. The
+*                   port is reset even if no device is tracked on it, as the enable change may be
+*                   reported after the device was released by a failed enumeration.
 *********************************************************************************************************
 */
 
@@ -1200,6 +1207,34 @@ static  void  USBH_HUB_EventProcess (void)
             err = USBH_HUB_PortEnChngClr(p_hub_dev, port_nbr);
             if (err != USBH_ERR_NONE) {
                 break;
+            }
+
+                                                                /* --------------- DEV DISABLED BY HUB ---------------- */
+            if ((DEF_BIT_IS_SET(port_status.wPortStatus, USBH_HUB_STATUS_PORT_CONN) == DEF_TRUE) &&
+                (DEF_BIT_IS_CLR(port_status.wPortStatus, USBH_HUB_STATUS_PORT_EN)   == DEF_TRUE)) {
+
+#if (USBH_CFG_PRINT_LOG == DEF_ENABLED)
+                USBH_PRINT_LOG("Port %d : Device Disabled by hub.\r\n", port_nbr);
+#endif
+
+                p_dev = p_hub_dev->DevPtrList[port_nbr - 1u];
+                if (p_dev != (USBH_DEV *)0) {
+                    USBH_OS_DlyMS(10u);                         /* Wait for any pending I/O xfer to rtn err.            */
+                    USBH_DevDisconn(p_dev);
+                    Mem_PoolBlkFree(        p_dev_pool,
+                                    (void *)p_dev,
+                                           &err_lib);
+                    p_hub_dev->DevPtrList[port_nbr - 1u] = (USBH_DEV *)0;
+                }
+
+                err = USBH_HUB_PortResetSet(p_hub_dev,          /* Apply port reset. See Notes #3.                      */
+                                            port_nbr);
+                if (err != USBH_ERR_NONE) {
+                    break;
+                }
+
+                USBH_OS_DlyMS(USBH_HUB_DLY_DEV_RESET);          /* See Notes #2.                                        */
+                continue;                                       /* Handle port reset status change.                     */
             }
         }
         port_nbr++;
