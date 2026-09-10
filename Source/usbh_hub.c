@@ -2359,21 +2359,23 @@ void  USBH_HUB_ParseHubDesc (USBH_HUB_DESC  *p_hub_desc,
 void  USBH_HUB_FmtHubDesc (USBH_HUB_DESC  *p_hub_desc,
                            void           *p_buf_dest)
 {
-    USBH_HUB_DESC  *p_buf_dest_desc;
-    CPU_INT08U      i;
+    USBH_HUB_DESC_BUF  *p_buf_dest_desc;
+    CPU_INT08U          i;
 
 
-    p_buf_dest_desc = (USBH_HUB_DESC *)p_buf_dest;
+    p_buf_dest_desc = (USBH_HUB_DESC_BUF *)p_buf_dest;
 
     p_buf_dest_desc->bDescLength         = p_hub_desc->bDescLength;
     p_buf_dest_desc->bDescriptorType     = p_hub_desc->bDescriptorType;
     p_buf_dest_desc->bNbrPorts           = p_hub_desc->bNbrPorts;
-    p_buf_dest_desc->wHubCharacteristics = MEM_VAL_GET_INT16U_LITTLE(&p_hub_desc->wHubCharacteristics);
+    MEM_VAL_SET_INT16U_LITTLE(&p_buf_dest_desc->wHubCharacteristics[0u],
+                               p_hub_desc->wHubCharacteristics);
     p_buf_dest_desc->bPwrOn2PwrGood      = p_hub_desc->bPwrOn2PwrGood;
     p_buf_dest_desc->bHubContrCurrent    = p_hub_desc->bHubContrCurrent;
     p_buf_dest_desc->DeviceRemovable     = p_hub_desc->DeviceRemovable;
 
     for (i = 0u; i < USBH_CFG_MAX_HUB_PORTS; i++) {
-        p_buf_dest_desc->PortPwrCtrlMask[i] = p_hub_desc->PortPwrCtrlMask[i];
+        MEM_VAL_SET_INT32U_LITTLE(&p_buf_dest_desc->PortPwrCtrlMask[i][0u],
+                                   p_hub_desc->PortPwrCtrlMask[i]);
     }
 }
